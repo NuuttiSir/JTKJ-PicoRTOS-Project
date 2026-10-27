@@ -19,7 +19,7 @@
 
 // Tehtävä 3: Tilakoneen esittely Add missing states.
 // Exercise 3: Definition of the state machine. Add missing states.
-enum state { WAITING = 1 };
+enum state { WAITING = 1, DATA_READY = 2 };
 enum state programState = WAITING;
 
 // Tehtävä 3: Valoisuuden globaali muuttuja
@@ -38,7 +38,8 @@ static void sensor_task(void *arg) {
   // Tehtävä 2: Alusta valoisuusanturi. Etsi SDK-dokumentaatiosta sopiva
   // funktio. Exercise 2: Init the light sensor. Find in the SDK documentation
   // the adequate function.
-
+  init_veml6030();
+ 
   for (;;) {
 
     // Tehtävä 2: Muokkaa tästä eteenpäin sovelluskoodilla. Kommentoi seuraava
@@ -47,9 +48,14 @@ static void sensor_task(void *arg) {
     // Exercise 2: Modify with application code here. Comment following line.
     //             Read sensor data and print it out as string;
     // tight_loop_contents();
-    uint32_t light = veml6030_read_light();
-    printf("Light: %ld\n", light);
-
+    //uint32_t light = veml6030_read_light();
+    //printf("Light: %ld\n", light);
+       if(ambientLight != veml6030_read_light()){
+      ambientLight = veml6030_read_light();
+      programState = DATA_READY;      
+    }else{
+      programState = WAITING;
+    }
     // Tehtävä 3:  Muokkaa aiemmin Tehtävässä 2 tehtyä koodia ylempänä.
     //             Jos olet oikeassa tilassa, tallenna anturin arvo
     //             tulostamisen sijaan globaaliin muuttujaan. Sen jälkeen
@@ -62,7 +68,7 @@ static void sensor_task(void *arg) {
 
     // Exercise 2. Just for sanity check. Please, comment this out
     // Tehtävä 2: Just for sanity check. Please, comment this out
-    printf("sensorTask\n");
+    //printf("sensorTask\n");
 
     // Do not remove this
     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -82,8 +88,11 @@ static void print_task(void *arg) {
     // is correct
     //             Remember to modify state
     //             Do not forget to comment next line of code.
-    tight_loop_contents();
-
+    //tight_loop_contents();
+    if(programState == DATA_READY){
+      printf("Light: %ld\n", ambientLight);
+      programState = WAITING;
+    }
     // Exercise 4. Use usb_serial_print() instead of printf() for debug output
     //             produced after the USB serial library has been initialized.
     //             Do not replace error messages that can execute before
@@ -107,7 +116,7 @@ static void print_task(void *arg) {
 
     // Exercise 3. Just for sanity check. Please, comment this out
     // Tehtävä 3: Just for sanity check. Please, comment this out
-    printf("printTask\n");
+    //printf("printTask\n");
 
     // Do not remove this
     vTaskDelay(pdMS_TO_TICKS(1000));
