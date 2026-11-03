@@ -21,7 +21,7 @@
 // Exercise 3: Definition of the state machine. Add missing states.
 enum state { WAITING = 1, DATA_READY = 2 };
 enum state programState = WAITING;
-
+float ax, ay, az, gx, gy, gz, t;
 // Tehtävä 3: Valoisuuden globaali muuttuja
 // Exercise 3: Global variable for ambient light
 uint32_t ambientLight;
@@ -39,7 +39,15 @@ static void sensor_task(void *arg) {
   // funktio. Exercise 2: Init the light sensor. Find in the SDK documentation
   // the adequate function.
   init_veml6030();
- 
+    if(init_ICM42670() == 0){
+      printf("ICM-42671P initialized successfully\n");
+      int _gyro = ICM42670_startGyro(ICM42670_GYRO_ODR_DEFAULT, ICM42670_GYRO_FSR_DEFAULT);
+      printf("Gyro return: %d\n",_gyro);
+        int _enablegyro = ICM42670_enable_accel_gyro_ln_mode();
+       printf ("Enable gyro: %d\n",_enablegyro);
+    }else{
+      printf("Failed to initialize ICM-42671P\n");
+    } 
   for (;;) {
 
     // Tehtävä 2: Muokkaa tästä eteenpäin sovelluskoodilla. Kommentoi seuraava
@@ -50,7 +58,15 @@ static void sensor_task(void *arg) {
     // tight_loop_contents();
     //uint32_t light = veml6030_read_light();
     //printf("Light: %ld\n", light);
-       if(ambientLight != veml6030_read_light()){
+
+       if (ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t) == 0) {
+            
+            printf("Accel: X=%f, Y=%f, Z=%f | Gyro: X=%f, Y=%f, Z=%f| Temp: %2.2f°C\n", ax, ay, az, gx, gy, gz, t);
+
+        } else {
+            printf("Failed to read imu data\n");
+        }
+  if(ambientLight != veml6030_read_light()){
       ambientLight = veml6030_read_light();
       programState = DATA_READY;      
     }else{
@@ -171,6 +187,7 @@ int main() {
 
   init_button1();
   init_led();
+  
   gpio_set_irq_enabled_with_callback(BUTTON1, GPIO_IRQ_EDGE_RISE, true,
                                      btn_fxn);
 
