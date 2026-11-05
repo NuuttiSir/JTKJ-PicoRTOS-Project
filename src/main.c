@@ -1,6 +1,6 @@
-
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #include <pico/stdlib.h>
 
@@ -10,199 +10,161 @@
 
 #include "tkjhat/sdk.h"
 
-// Exercise 4. Include the libraries necessaries to use the usb-serial-debug,
-// and tinyusb Tehtävä 4 . Lisää usb-serial-debugin ja tinyusbin käyttämiseen
-// tarvittavat kirjastot.
-
 #define DEFAULT_STACK_SIZE 2048
 #define CDC_ITF_TX 1
 
-// Tehtävä 3: Tilakoneen esittely Add missing states.
-// Exercise 3: Definition of the state machine. Add missing states.
+
+#define SAMPLE_MS       10      // 100 Hz
+#define PRINT_EVERY     100     // print once per second
+#define SETTLE_SAMPLES  50      // ~0.5 s discarded while the gyro starts up
+#define CAL_SAMPLES     300     // ~3 s bias calibration
+#define DEADBAND_DPS    0.3f    // |rate| below this counts as "not rotating"
+#define BIAS_ALPHA      0.001f  // bias follow speed (~10 s time constant)
+
 enum state { WAITING = 1, DATA_READY = 2 };
 enum state programState = WAITING;
 float ax, ay, az, gx, gy, gz, t;
-// Tehtävä 3: Valoisuuden globaali muuttuja
-// Exercise 3: Global variable for ambient light
-uint32_t ambientLight;
-
-static void btn_fxn(uint gpio, uint32_t eventMask) {
-  // Tehtävä 1: Vaihda LEDin tila käyttämällä TKJHAT SDK:n sopivaa funktiota.
-  // Exercise 1: Toggle the LED using the appropriate function from the TKJHAT
-  // SDK.
-  toggle_led();
-}
 
 static void sensor_task(void *arg) {
   (void)arg;
-  // Tehtävä 2: Alusta valoisuusanturi. Etsi SDK-dokumentaatiosta sopiva
-  // funktio. Exercise 2: Init the light sensor. Find in the SDK documentation
-  // the adequate function.
+
   init_veml6030();
-    if(init_ICM42670() == 0){
-      printf("ICM-42671P initialized successfully\n");
-      int _gyro = ICM42670_startGyro(ICM42670_GYRO_ODR_DEFAULT, ICM42670_GYRO_FSR_DEFAULT);
-      printf("Gyro return: %d\n",_gyro);
-        int _enablegyro = ICM42670_enable_accel_gyro_ln_mode();
-       printf ("Enable gyro: %d\n",_enablegyro);
-    }else{
-      printf("Failed to initialize ICM-42671P\n");
-    } 
-  for (;;) {
+  if (init_ICM42670() == 0) {
+    printf("ICM-42671P initialized successfully\n");
+    int _gyro = ICM42670_startGyro(ICM42670_GYRO_ODR_DEFAULT, ICM42670_GYRO_FSR_DEFAULT);
+    printf("Gyro return: %d\n", _gyro);
+    int _enablegyro = ICM42670_enable_accel_gyro_ln_mode();
+    printf("Enable gyro: %d\n", _enablegyro);
+  } else {
+    printf("Failed to initialize ICM-42671P\n");
+  }
 
-    // Tehtävä 2: Muokkaa tästä eteenpäin sovelluskoodilla. Kommentoi seuraava
-    // rivi.
-    //
-    // Exercise 2: Modify with application code here. Comment following line.
-    //             Read sensor data and print it out as string;
-    // tight_loop_contents();
-    //uint32_t light = veml6030_read_light();
-    //printf("Light: %ld\n", light);
+  // 1) Throw away the first samples while the gyro settles
+  for (int i = 0; i < SETTLE_SAMPLES; i++) {
+    ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
+    vTaskDelay(pdMS_TO_TICKS(SAMPLE_MS));
+  }
 
-       if (ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t) == 0) {
-            
-            printf("Accel: X=%f, Y=%f, Z=%f | Gyro: X=%f, Y=%f, Z=%f| Temp: %2.2f°C\n", ax, ay, az, gx, gy, gz, t);
-
-        } else {
-            printf("Failed to read imu data\n");
-        }
-  if(ambientLight != veml6030_read_light()){
-      ambientLight = veml6030_read_light();
-      programState = DATA_READY;      
-    }else{
-      programState = WAITING;
+  // 2) Measure the zero-rate offset (board must be perfectly still)
+  printf("Calibrating - keep the board still...\n");
+  float bias_z = 0.0f;
+  int good = 0;
+  for (int i = 0; i < CAL_SAMPLES; i++) {
+    if (ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t) == 0) {
+      bias_z += gz;
+      good++;
     }
-    // Tehtävä 3:  Muokkaa aiemmin Tehtävässä 2 tehtyä koodia ylempänä.
-    //             Jos olet oikeassa tilassa, tallenna anturin arvo
-    //             tulostamisen sijaan globaaliin muuttujaan. Sen jälkeen
-    //             muuta tilaa.
-    // Exercise 3: Modify previous code done for Exercise 2, in previous
-    // lines.
-    //             If you are in adequate state, instead of printing save
-    //             the sensor value into the global variable. After that,
-    //             modify state
+    vTaskDelay(pdMS_TO_TICKS(SAMPLE_MS));
+  }
+  if (good > 0) bias_z /= good;
+  printf("Gyro Z bias: %.4f deg/s\n", bias_z);
 
-    // Exercise 2. Just for sanity check. Please, comment this out
-    // Tehtävä 2: Just for sanity check. Please, comment this out
-    //printf("sensorTask\n");
+  float angle_deg = 0.0f;
+  int print_cnt = 0;
+  uint64_t prev_us = time_us_64();
 
-    // Do not remove this
-    vTaskDelay(pdMS_TO_TICKS(1000));
+  for (;;) {
+    vTaskDelay(pdMS_TO_TICKS(SAMPLE_MS));
+
+    if (ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t) != 0) {
+      continue;                     // bad read: skip it, don't integrate garbage
+    }
+
+    uint64_t now = time_us_64();
+    float dt = (now - prev_us) * 1e-6f;
+    prev_us = now;
+
+    float rate = gz - bias_z;       // deg/s with the offset removed
+
+    if (fabsf(rate) < DEADBAND_DPS) {
+      bias_z += BIAS_ALPHA * rate;  // standing still: let bias follow slow drift
+      rate = 0.0f;                  // and don't integrate noise
+    }
+
+    angle_deg += rate * dt;
+    if (angle_deg < 0.0f)    angle_deg += 360.0f;
+    if (angle_deg >= 360.0f) angle_deg -= 360.0f;
+
+    if (++print_cnt >= PRINT_EVERY) {
+      print_cnt = 0;
+      printf("Angle: %.2f degrees\n", angle_deg);
+    }
   }
 }
+
+// static void sensor_task(void *arg) {
+//   (void)arg;
+
+//   init_veml6030();
+//     if(init_ICM42670() == 0){
+//       printf("ICM-42671P initialized successfully\n");
+//       int _gyro = ICM42670_startGyro(ICM42670_GYRO_ODR_DEFAULT, ICM42670_GYRO_FSR_DEFAULT);
+//       printf("Gyro return: %d\n",_gyro);
+//         int _enablegyro = ICM42670_enable_accel_gyro_ln_mode();
+//        printf ("Enable gyro: %d\n",_enablegyro);
+//     }else{
+//       printf("Failed to initialize ICM-42671P\n");
+//     }
+
+//     static float angle_deg = 0.0f;
+//     static float gyro_bias_z = 0.0f;
+//     uint64_t prev_us;
+
+//     // after init, board must be still:
+//     for (int i = 0; i < 100; i++)
+//     {
+//       ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
+//       gyro_bias_z += gz;
+//       vTaskDelay(pdMS_TO_TICKS(10));
+//     }
+//     gyro_bias_z /= 100.0f;
+//     prev_us = time_us_64();
+
+//     for (;;) {
+
+//       uint64_t now = time_us_64();
+//       float dt = (now - prev_us) * 1e-6f;
+//       prev_us = now;
+
+//       if (ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t) == 0)
+//       {
+//         angle_deg += (gz - gyro_bias_z) * dt;
+//         if (angle_deg < 0.0f)
+//           angle_deg += 360.0f;
+//         if (angle_deg >= 360.0f)
+//           angle_deg -= 360.0f;
+//         printf("Angle: %.2f degrees\n", angle_deg);
+//       }
+//       vTaskDelay(pdMS_TO_TICKS(1000)); // 100 Hz
+//     }
+// }
 
 static void print_task(void *arg) {
   (void)arg;
 
   while (1) {
 
-    // Tehtävä 3: Kun tila on oikea, tulosta sensoridata merkkijonossa
-    // debug-ikkunaan
-    //            Muista tilamuutos
-    //            Älä unohda kommentoida seuraavaa koodiriviä.
-    // Exercise 3: Print out sensor data as string to debug window if the state
-    // is correct
-    //             Remember to modify state
-    //             Do not forget to comment next line of code.
-    //tight_loop_contents();
-    if(programState == DATA_READY){
-      printf("Light: %ld\n", ambientLight);
-      programState = WAITING;
-    }
-    // Exercise 4. Use usb_serial_print() instead of printf() for debug output
-    //             produced after the USB serial library has been initialized.
-    //             Do not replace error messages that can execute before
-    //             usb_serial_init(). Use the TinyUSB library to send data
-    //             through the other serial port (CDC 1). You can use the
-    //             functions at
-    //             https://github.com/hathach/tinyusb/blob/master/src/class/cdc/cdc_device.h
-    //             You can find an example at hello_dual_cdc
-    //             The data written using this should be provided using csv
-    //             timestamp, illuminance
-    // Tehtävä 4. Käytä usb_serial_print()-funktiota printf()-funktion sijaan
-    //            debug-tulostukseen sen jälkeen, kun USB-sarjaliikennekirjasto
-    //            on alustettu. Älä korvaa virheilmoituksia, jotka voivat
-    //            suorittua ennen usb_serial_init()-kutsua. Käytä
-    //            TinyUSB-kirjastoa datan lähettämiseen toisen sarjaportin (CDC
-    //            1) kautta. Voit käyttää funktioita:
-    //            https://github.com/hathach/tinyusb/blob/master/src/class/cdc/cdc_device.h
-    //            Esimerkki löytyy hello_dual_cdc-projektista.
-    //            Tällä menetelmällä kirjoitettu data tulee antaa CSV-muodossa:
-    //            timestamp, illuminance
-
-    // Exercise 3. Just for sanity check. Please, comment this out
-    // Tehtävä 3: Just for sanity check. Please, comment this out
-    //printf("printTask\n");
-
     // Do not remove this
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
-// Exercise 4: Uncomment the following line to activate the TinyUSB library.
-// Tehtävä 4:  Poista seuraavan rivin kommentointi aktivoidaksesi
-// TinyUSB-kirjaston.
-
-/*
-static void usbTask(void *arg) {
-    (void)arg;
-    while (1) {
-        tud_task();              // With FreeRTOS wait for events
-                                 // Do not add vTaskDelay.
-    }
-}*/
 
 int main() {
 
-  // Exercise 4: Comment the statement stdio_init_all();
-  //             Instead, add AT THE END OF MAIN (before vTaskStartScheduler();)
-  //             adequate statements to enable the TinyUSB library and the
-  //             usb-serial-debug. You can see hello_dual_cdc for help In
-  //             CMakeLists.txt add usb_serial_debug to target_link_libraries.
-  //             In CMakeLists.txt deactivate pico_enable_stdio_usb
-  // Tehtävä 4:  Kommentoi lause stdio_init_all();
-  //             Sen sijaan lisää MAIN LOPPUUN (ennen vTaskStartScheduler();)
-  //             tarvittavat komennot aktivoidaksesi TinyUSB-kirjaston ja
-  //             usb-serial-debugin. Voit katsoa apua esimerkistä
-  //             hello_dual_cdc. Lisää CMakeLists.txt-tiedoston
-  //             target_link_libraries-kohtaan usb_serial_debug. Poista
-  //             CMakeLists.txt-tiedostosta käytöstä pico_enable_stdio_usb
 
   stdio_init_all();
 
-  // Uncomment this lines if you want to wait till the serial monitor is
-  // connected
-  /*while (!stdio_usb_connected()){
-      sleep_ms(10);
-  }*/
 
   init_hat_sdk();
   sleep_ms(300); // Wait some time so initialization of USB and hat is done.
 
-  // Exercise 1: Initialize the button and the led and define an register the
-  // corresponding interrupton.
-  //             Interruption handler is defined up as btn_fxn
-  // Tehtävä 1:  Alusta painike ja LEd ja rekisteröi vastaava keskeytys.
-  //             Keskeytyskäsittelijä on määritelty yläpuolella nimellä btn_fxn
 
   init_button1();
   init_led();
-  
-  gpio_set_irq_enabled_with_callback(BUTTON1, GPIO_IRQ_EDGE_RISE, true,
-                                     btn_fxn);
+
 
   TaskHandle_t hSensorTask, hPrintTask, hUSB = NULL;
-
-  // Exercise 4: Uncomment this xTaskCreate to create the task that enables dual
-  // USB communication. Tehtävä 4: Poista tämän xTaskCreate-rivin kommentointi
-  // luodaksesi tehtävän, joka mahdollistaa kaksikanavaisen USB-viestinnän.
-
-  /*
-  xTaskCreate(usbTask, "usb", 2048, NULL, 3, &hUSB);
-  #if (configNUMBER_OF_CORES > 1)
-      vTaskCoreAffinitySet(hUSB, 1u << 0);
-  #endif
-  */
 
   // Create the tasks with xTaskCreate
   BaseType_t result = xTaskCreate(
