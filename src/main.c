@@ -30,6 +30,8 @@ static void sensor_task(void *arg) {
   (void)arg;
 
   init_veml6030();
+  init_display();
+  clear_display();
   if (init_ICM42670() == 0) {
     printf("ICM-42671P initialized successfully\n");
     int _gyro = ICM42670_startGyro(ICM42670_GYRO_ODR_DEFAULT,
@@ -64,6 +66,8 @@ static void sensor_task(void *arg) {
 
   float angle_deg = 0.0f;
   int print_cnt = 0;
+  int lcd_cnt = 0;  //refresh counter   
+  char lcd_buf[24]; // buffer for lcd display
   uint64_t prev_us = time_us_64();
 
   for (;;) {
@@ -93,6 +97,12 @@ static void sensor_task(void *arg) {
     if (++print_cnt >= PRINT_EVERY) {
       print_cnt = 0;
       printf("Angle: %.2f degrees\n", angle_deg);
+    }
+     if (++lcd_cnt >= 10) {   // every 10 samples = 10 Hz
+      lcd_cnt = 0;
+      snprintf(lcd_buf, sizeof(lcd_buf), "Angle: %6.1f", angle_deg);
+      clear_display();
+      write_text_xy(0, 0, lcd_buf);
     }
   }
 }
