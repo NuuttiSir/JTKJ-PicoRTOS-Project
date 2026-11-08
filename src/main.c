@@ -24,6 +24,7 @@ enum state { WAITING = 1, DATA_READY = 2 };
 enum state programState = WAITING;
 
 
+
 float ax, ay, az, gx, gy, gz, t;
 
 static void sensor_task(void *arg) {
@@ -92,7 +93,13 @@ static void sensor_task(void *arg) {
 
     if (++print_cnt >= PRINT_EVERY) {
       print_cnt = 0;
-      printf("Angle: %.2f degrees\n", angle_deg);
+      if (angle_deg > 5 && angle_deg < 90) {
+        printf("Kulma: %f; Piste", angle_deg);
+      } else if(angle_deg < 355 && angle_deg > 270) {
+        printf("Kulma: %f; Viiva", angle_deg);
+      } else if (angle_deg < 5 || angle_deg > 355){
+        printf("Kulma: %f; Odotetaan viivaa tai pistetta", angle_deg);
+      }
     }
   }
 }
