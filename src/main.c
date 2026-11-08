@@ -1,6 +1,6 @@
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
 
 #include <pico/stdlib.h>
 
@@ -13,16 +13,16 @@
 #define DEFAULT_STACK_SIZE 2048
 #define CDC_ITF_TX 1
 
-
-#define SAMPLE_MS       10      // 100 Hz
-#define PRINT_EVERY     100     // print once per second
-#define SETTLE_SAMPLES  50      // ~0.5 s discarded while the gyro starts up
-#define CAL_SAMPLES     300     // ~3 s bias calibration
-#define DEADBAND_DPS    0.3f    // |rate| below this counts as "not rotating"
-#define BIAS_ALPHA      0.001f  // bias follow speed (~10 s time constant)
+#define SAMPLE_MS 10      // 100 Hz
+#define PRINT_EVERY 100   // print once per second
+#define SETTLE_SAMPLES 50 // ~0.5 s discarded while the gyro starts up
+#define CAL_SAMPLES 300   // ~3 s bias calibration
+#define DEADBAND_DPS 0.3f // |rate| below this counts as "not rotating"
+#define BIAS_ALPHA 0.001f // bias follow speed (~10 s time constant)
 
 enum state { WAITING = 1, DATA_READY = 2 };
 enum state programState = WAITING;
+
 float ax, ay, az, gx, gy, gz, t;
 
 static void sensor_task(void *arg) {
@@ -31,7 +31,8 @@ static void sensor_task(void *arg) {
   init_veml6030();
   if (init_ICM42670() == 0) {
     printf("ICM-42671P initialized successfully\n");
-    int _gyro = ICM42670_startGyro(ICM42670_GYRO_ODR_DEFAULT, ICM42670_GYRO_FSR_DEFAULT);
+    int _gyro = ICM42670_startGyro(ICM42670_GYRO_ODR_DEFAULT,
+                                   ICM42670_GYRO_FSR_DEFAULT);
     printf("Gyro return: %d\n", _gyro);
     int _enablegyro = ICM42670_enable_accel_gyro_ln_mode();
     printf("Enable gyro: %d\n", _enablegyro);
@@ -56,7 +57,8 @@ static void sensor_task(void *arg) {
     }
     vTaskDelay(pdMS_TO_TICKS(SAMPLE_MS));
   }
-  if (good > 0) bias_z /= good;
+  if (good > 0)
+    bias_z /= good;
   printf("Gyro Z bias: %.4f deg/s\n", bias_z);
 
   float angle_deg = 0.0f;
@@ -67,23 +69,25 @@ static void sensor_task(void *arg) {
     vTaskDelay(pdMS_TO_TICKS(SAMPLE_MS));
 
     if (ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t) != 0) {
-      continue;                     // bad read: skip it, don't integrate garbage
+      continue; // bad read: skip it, don't integrate garbage
     }
 
     uint64_t now = time_us_64();
     float dt = (now - prev_us) * 1e-6f;
     prev_us = now;
 
-    float rate = gz - bias_z;       // deg/s with the offset removed
+    float rate = gz - bias_z; // deg/s with the offset removed
 
     if (fabsf(rate) < DEADBAND_DPS) {
-      bias_z += BIAS_ALPHA * rate;  // standing still: let bias follow slow drift
-      rate = 0.0f;                  // and don't integrate noise
+      bias_z += BIAS_ALPHA * rate; // standing still: let bias follow slow drift
+      rate = 0.0f;                 // and don't integrate noise
     }
 
     angle_deg += rate * dt;
-    if (angle_deg < 0.0f)    angle_deg += 360.0f;
-    if (angle_deg >= 360.0f) angle_deg -= 360.0f;
+    if (angle_deg < 0.0f)
+      angle_deg += 360.0f;
+    if (angle_deg >= 360.0f)
+      angle_deg -= 360.0f;
 
     if (++print_cnt >= PRINT_EVERY) {
       print_cnt = 0;
@@ -92,79 +96,17 @@ static void sensor_task(void *arg) {
   }
 }
 
-// static void sensor_task(void *arg) {
-//   (void)arg;
-
-//   init_veml6030();
-//     if(init_ICM42670() == 0){
-//       printf("ICM-42671P initialized successfully\n");
-//       int _gyro = ICM42670_startGyro(ICM42670_GYRO_ODR_DEFAULT, ICM42670_GYRO_FSR_DEFAULT);
-//       printf("Gyro return: %d\n",_gyro);
-//         int _enablegyro = ICM42670_enable_accel_gyro_ln_mode();
-//        printf ("Enable gyro: %d\n",_enablegyro);
-//     }else{
-//       printf("Failed to initialize ICM-42671P\n");
-//     }
-
-//     static float angle_deg = 0.0f;
-//     static float gyro_bias_z = 0.0f;
-//     uint64_t prev_us;
-
-//     // after init, board must be still:
-//     for (int i = 0; i < 100; i++)
-//     {
-//       ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
-//       gyro_bias_z += gz;
-//       vTaskDelay(pdMS_TO_TICKS(10));
-//     }
-//     gyro_bias_z /= 100.0f;
-//     prev_us = time_us_64();
-
-//     for (;;) {
-
-//       uint64_t now = time_us_64();
-//       float dt = (now - prev_us) * 1e-6f;
-//       prev_us = now;
-
-//       if (ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t) == 0)
-//       {
-//         angle_deg += (gz - gyro_bias_z) * dt;
-//         if (angle_deg < 0.0f)
-//           angle_deg += 360.0f;
-//         if (angle_deg >= 360.0f)
-//           angle_deg -= 360.0f;
-//         printf("Angle: %.2f degrees\n", angle_deg);
-//       }
-//       vTaskDelay(pdMS_TO_TICKS(1000)); // 100 Hz
-//     }
-// }
-
-static void print_task(void *arg) {
-  (void)arg;
-
-  while (1) {
-
-    // Do not remove this
-    vTaskDelay(pdMS_TO_TICKS(10));
-  }
-}
-
-
 int main() {
 
-
   stdio_init_all();
-
 
   init_hat_sdk();
   sleep_ms(300); // Wait some time so initialization of USB and hat is done.
 
-
   init_button1();
   init_led();
 
-
-  TaskHandle_t hSensorTask, hPrintTask, hUSB = NULL;
+  TaskHandle_t hSensorTask = NULL;
 
   // Create the tasks with xTaskCreate
   BaseType_t result = xTaskCreate(
@@ -178,19 +120,6 @@ int main() {
 
   if (result != pdPASS) {
     printf("Sensor task creation failed\n");
-    return 0;
-  }
-  result = xTaskCreate(
-      print_task,         // (en) Task function
-      "print",            // (en) Name of the task
-      DEFAULT_STACK_SIZE, // (en) Size of the stack for this task (in words).
-                          // Generally 1024 or 2048
-      NULL,               // (en) Arguments of the task
-      2,                  // (en) Priority of this task
-      &hPrintTask);       // (en) A handle to control the execution of this task
-
-  if (result != pdPASS) {
-    printf("Print Task creation failed\n");
     return 0;
   }
 
