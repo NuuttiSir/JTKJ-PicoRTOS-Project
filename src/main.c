@@ -100,25 +100,25 @@ static void sensor_task(void *arg) {
     if (angle_deg >= 360.0f)
       angle_deg -= 360.0f;
 
-    // if (++lcd_cnt >= 10) { // every 10 samples = 10 Hz
-    //   lcd_cnt = 0;
-    //   snprintf(lcd_buf, sizeof(lcd_buf), "Angle: %6.1f", angle_deg);
-    //   clear_display();
-    //   write_text_xy(0, 0, lcd_buf);
-    // }
-    if (++print_cnt >= PRINT_EVERY) {
-      print_cnt = 0;
-      while (!isFull(&queue)) {
+    if (++lcd_cnt >= 10) { // every 10 samples = 10 Hz
+      lcd_cnt = 0;
+      // while (!isFull(&queue)) {
         if (angle_deg > DEADZONE && angle_deg < 90) {
-          printf("Kulma: %f; Piste", angle_deg);
+          snprintf(lcd_buf, sizeof(lcd_buf), "Angle: %6.1f PISTE", angle_deg);
           enqueue(&queue, PISTE);
+      clear_display();
+      write_text_xy(0, 0, lcd_buf);
         } else if (angle_deg < 360 - DEADZONE && angle_deg > 270) {
-          printf("Kulma: %f; Viiva", angle_deg);
+          snprintf(lcd_buf, sizeof(lcd_buf), "Angle: %6.1f VIIVA", angle_deg);
           enqueue(&queue, VIIVA);
+      clear_display();
+      write_text_xy(0, 0, lcd_buf);
         } else if (angle_deg < DEADZONE || angle_deg > 360 - DEADZONE) {
           printQueue(&queue);
+      clear_display();
+      write_text_xy(0, 0, lcd_buf);
         }
-      }
+      // }
     }
   }
 }
