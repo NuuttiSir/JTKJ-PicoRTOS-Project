@@ -36,6 +36,8 @@ static void sensor_task(void *arg) {
   (void)arg;
 
   init_veml6030();
+  init_display();
+  clear_display();
   if (init_ICM42670() == 0) {
     printf("ICM-42671P initialized successfully\n");
     int _gyro = ICM42670_startGyro(ICM42670_GYRO_ODR_DEFAULT,
@@ -70,6 +72,8 @@ static void sensor_task(void *arg) {
 
   float angle_deg = 0.0f;
   int print_cnt = 0;
+  int lcd_cnt = 0;  // refresh counter
+  char lcd_buf[24]; // buffer for lcd display
   uint64_t prev_us = time_us_64();
 
   for (;;) {
@@ -99,17 +103,17 @@ static void sensor_task(void *arg) {
     if (++print_cnt >= PRINT_EVERY) {
       print_cnt = 0;
       while (!isFull(&queue)) {
-      if (angle_deg > DEADZONE && angle_deg < 90) {
-        printf("Kulma: %f; Piste", angle_deg);
-        enqueue(&queue, PISTE);
-      } else if (angle_deg < 360 - DEADZONE && angle_deg > 270) {
-        printf("Kulma: %f; Viiva", angle_deg);
-        enqueue(&queue, VIIVA);
-      } else if (angle_deg < DEADZONE || angle_deg > 360 - DEADZONE) {
-        printQueue(&queue);
+        if (angle_deg > DEADZONE && angle_deg < 90) {
+          printf("Kulma: %f; Piste", angle_deg);
+          enqueue(&queue, PISTE);
+        } else if (angle_deg < 360 - DEADZONE && angle_deg > 270) {
+          printf("Kulma: %f; Viiva", angle_deg);
+          enqueue(&queue, VIIVA);
+        } else if (angle_deg < DEADZONE || angle_deg > 360 - DEADZONE) {
+          printQueue(&queue);
+        }
       }
     }
-      }
   }
 }
 
