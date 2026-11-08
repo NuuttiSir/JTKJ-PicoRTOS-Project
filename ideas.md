@@ -12,3 +12,6 @@ Z is rotation on table
 
 TODO: Gyro calibration in sdk.c
 TODO: JASPER katso screen ja sisäistä
+
+Oikea viiva, vasen piste
+
