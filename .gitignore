@@ -5,3 +5,5 @@ build
 Thumbs.db
 # Doxygen output
 libs/TKJHAT/docs/out/
+
+.cache/*
