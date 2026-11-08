@@ -23,6 +23,7 @@
 enum state { WAITING = 1, DATA_READY = 2 };
 enum state programState = WAITING;
 
+
 float ax, ay, az, gx, gy, gz, t;
 
 static void sensor_task(void *arg) {
