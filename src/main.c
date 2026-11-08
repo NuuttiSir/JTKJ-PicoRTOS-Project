@@ -8,6 +8,7 @@
 #include <queue.h>
 #include <task.h>
 
+#include "morse_queue.c"
 #include "tkjhat/sdk.h"
 
 #define DEFAULT_STACK_SIZE 2048
@@ -20,12 +21,16 @@
 #define DEADBAND_DPS 0.3f // |rate| below this counts as "not rotating"
 #define BIAS_ALPHA 0.001f // bias follow speed (~10 s time constant)
 
+#define DEADZONE 15 // TODO: VAIHDA
+
 enum state { WAITING = 1, DATA_READY = 2 };
 enum state programState = WAITING;
 
-
+enum viivapiste { PISTE = 0, VIIVA = 1 };
 
 float ax, ay, az, gx, gy, gz, t;
+
+MORSE_QUEUE queue;
 
 static void sensor_task(void *arg) {
   (void)arg;
@@ -93,14 +98,18 @@ static void sensor_task(void *arg) {
 
     if (++print_cnt >= PRINT_EVERY) {
       print_cnt = 0;
-      if (angle_deg > 5 && angle_deg < 90) {
+      while (!isFull(&queue)) {
+      if (angle_deg > DEADZONE && angle_deg < 90) {
         printf("Kulma: %f; Piste", angle_deg);
-      } else if(angle_deg < 355 && angle_deg > 270) {
+        enqueue(&queue, PISTE);
+      } else if (angle_deg < 360 - DEADZONE && angle_deg > 270) {
         printf("Kulma: %f; Viiva", angle_deg);
-      } else if (angle_deg < 5 || angle_deg > 355){
-        printf("Kulma: %f; Odotetaan viivaa tai pistetta", angle_deg);
+        enqueue(&queue, VIIVA);
+      } else if (angle_deg < DEADZONE || angle_deg > 360 - DEADZONE) {
+        printQueue(&queue);
       }
     }
+      }
   }
 }
 

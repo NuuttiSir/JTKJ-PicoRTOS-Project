@@ -15,3 +15,30 @@ TODO: JASPER katso screen ja sisäistä
 
 Oikea viiva, vasen piste
 
+International morse coden mukaan:
+1. len of dot is 1 unit
+2. len of dash is 3 units
+3. space between parts of same letter is 1 unit
+4. space between letters is 3 units
+5. space between words is 7 units
+
+Maksimi koko sille sana bufferille 6 koska pisin kirjain on 5 pistettä ja viivaa
+
+Laitetaan kaikki kirjaimet ja numerot johonkin dictionaryn tapasee? Ihana tree structure tulee noista jos haluaa hifistellä
+
+Esim:
+A -> * -
+B -> - * * *
+jne jne.
+
+
+
+Eli ajattelin näin:
+1. Ihminen kääntää joko oikealle tai vasemalle
+2. Saadaan viiva tai piste queueueueueueuhen
+3. Ihminen palauttaa levyn välille 345 < x < 15 astetta
+4. Ihminen saa antaa uuden pisteen tai kirjaimen
+5. repeat until väli
+    5.1. Välilyönti joko levyn nosto pöydältä tai nappi ihsm
+6. Profit
+
