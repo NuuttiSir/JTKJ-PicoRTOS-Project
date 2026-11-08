@@ -114,6 +114,12 @@ static void sensor_task(void *arg) {
         }
       }
     }
+    if (++lcd_cnt >= 10) { // every 10 samples = 10 Hz
+      lcd_cnt = 0;
+      snprintf(lcd_buf, sizeof(lcd_buf), "Angle: %6.1f", angle_deg);
+      clear_display();
+      write_text_xy(0, 0, lcd_buf);
+    }
   }
 }
 
