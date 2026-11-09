@@ -42,3 +42,4 @@ Eli ajattelin näin:
     5.1. Välilyönti joko levyn nosto pöydältä tai nappi ihsm
 6. Profit
 
+Tavallaan vois vasemman flikin ja oikean flikin laittaa eri velocityn koska ei oikealla kadella pysty oikealla flikkaan niin hyvin kuin vasemmalle
