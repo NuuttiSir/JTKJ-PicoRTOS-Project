@@ -24,7 +24,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-
 /**
  * @file tkjhat/sdk.h
  * @brief Public API for the JTKJ HAT SDK (Raspberry Pi Pico / Pico 2).
@@ -47,7 +46,7 @@ SOFTWARE.
  *   - One RGB LED (GPIO 18:R, 19:G, 20:B) driven by PWM
  *   - Buzzer (GPIO 17)
  *   - 0.96 inches SSD1306 I2C OLED display (addr 0x3C)
- * 
+ *
  * - **Sensors**
  *   - VEML6030 ambient light sensor (I2C addr 0x10)
  *   - HDC2021 temperature & humidity sensor (I2C addr 0x40)
@@ -57,8 +56,8 @@ SOFTWARE.
  *
  * - **I2C defaults**
  *   - SDA GPIO 12, SCL GPIO 13
- * 
- * 
+ *
+ *
  * The API aims to be minimal and easy to use in teaching settings. Functions provide
  * simple access to the main sensors and actuators and configure the required
  * pins/peripherals for basic operation. Some functions include delays or busy waits;
@@ -66,7 +65,7 @@ SOFTWARE.
  * RTOS code.
  *
  * ### Typical usage
- * 
+ *
  * @code{.c}
  * #include <tkjhat/sdk.h>
  *
@@ -104,15 +103,14 @@ SOFTWARE.
 #ifndef SDK_H
 #define SDK_H
 
-
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 #include "pico/stdlib.h"
 #include <hardware/i2c.h>
 
-#include "pdm_microphone.h"   // pdm_samples_ready_handler_t
+#include "pdm_microphone.h" // pdm_samples_ready_handler_t
 #include "pins.h"
 
 /* =========================
@@ -124,7 +122,7 @@ SOFTWARE.
  * ========================= */
 
 /**
- * @defgroup Macros Macros including addresses and registers of peripherals 
+ * @defgroup Macros Macros including addresses and registers of peripherals
  * @brief Register addresses and constants for the different sensors and actuators of the HAT.
  * @{
  */
@@ -132,50 +130,49 @@ SOFTWARE.
 /** @name VEML6030
  *  Light sensor address, and registers
  *  @{ */
-#define VEML6030_I2C_ADDRESS                    0x10   /**< I2C address of the VEML6030 sensor. */
-#define VEML6030_CONFIG_REG                     0x00   /**< Configuration register. */
-#define VEML6030_ALS_REG                        0x04   /**< Ambient Light Sensing (ALS) data register. */
+#define VEML6030_I2C_ADDRESS 0x10 /**< I2C address of the VEML6030 sensor. */
+#define VEML6030_CONFIG_REG 0x00  /**< Configuration register. */
+#define VEML6030_ALS_REG 0x04     /**< Ambient Light Sensing (ALS) data register. */
 /** @} */
 
 /* =========================
  *  HDC2021
  * ========================= */
 
- /** @name HDC2021
+/** @name HDC2021
  *  Humidity sensor address, registers and interruptions thresholds
  *  @{ */
-#define HDC2021_I2C_ADDRESS                     0x40   /**< I2C address of the HDC2021 sensor. */
-#define HDC2021_TEMP_LOW                        0x00   /**< Temperature low byte register. */
-#define HDC2021_TEMP_HIGH                       0x01   /**< Temperature high byte register. */
-#define HDC2021_HUMIDITY_LOW                    0x02   /**< Humidity low byte register. */
-#define HDC2021_HUMIDITY_HIGH                   0x03   /**< Humidity high byte register. */
-#define HDC2021_CONFIG                          0x0E   /**< Configuration register. */
-#define HDC2021_MEASUREMENT_CONFIG              0x0F   /**< Measurement configuration register. */
-#define HDC2021_TEMP_THR_L                      0x13   /**< Low temperature threshold. */
-#define HDC2021_TEMP_THR_H                      0x14   /**< High temperature threshold. */
-#define HDC2021_HUMID_THR_L                     0x15   /**< Low humidity threshold. */
-#define HDC2021_HUMID_THR_H                     0x16   /**< High humidity threshold. */
+#define HDC2021_I2C_ADDRESS 0x40        /**< I2C address of the HDC2021 sensor. */
+#define HDC2021_TEMP_LOW 0x00           /**< Temperature low byte register. */
+#define HDC2021_TEMP_HIGH 0x01          /**< Temperature high byte register. */
+#define HDC2021_HUMIDITY_LOW 0x02       /**< Humidity low byte register. */
+#define HDC2021_HUMIDITY_HIGH 0x03      /**< Humidity high byte register. */
+#define HDC2021_CONFIG 0x0E             /**< Configuration register. */
+#define HDC2021_MEASUREMENT_CONFIG 0x0F /**< Measurement configuration register. */
+#define HDC2021_TEMP_THR_L 0x13         /**< Low temperature threshold. */
+#define HDC2021_TEMP_THR_H 0x14         /**< High temperature threshold. */
+#define HDC2021_HUMID_THR_L 0x15        /**< Low humidity threshold. */
+#define HDC2021_HUMID_THR_H 0x16        /**< High humidity threshold. */
 /** @} */
-
 
 /* =========================
  *  SSD1306
  * ========================= */
 
 /** @name Display
- *  SSD1306 display address 
+ *  SSD1306 display address
  *  @{ */
-#define SSD1306_I2C_ADDRESS                     0x3C   /**< I2C address of the SSD1306 OLED display. */
+#define SSD1306_I2C_ADDRESS 0x3C /**< I2C address of the SSD1306 OLED display. */
 /** @} */
 
 /* =========================
  *  MEMS MICROPHONE
  * ========================= */
 /** @name Microphone
- *  Microphone's sampling rate and buffer size. 
+ *  Microphone's sampling rate and buffer size.
  *  @{ */
-#define MEMS_SAMPLING_FREQUENCY                 8000   /**< Sampling frequency in Hz for PDM microphone. */
-#define MEMS_BUFFER_SIZE                        256    /**< Number of samples in each microphone buffer. */
+#define MEMS_SAMPLING_FREQUENCY 8000 /**< Sampling frequency in Hz for PDM microphone. */
+#define MEMS_BUFFER_SIZE 256         /**< Number of samples in each microphone buffer. */
 /** @} */
 
 /* =========================
@@ -185,99 +182,96 @@ SOFTWARE.
 /** @name I2C addressing
  *  I2C address and identity registers.
  *  @{ */
-#define ICM42670_I2C_ADDRESS                    0x69   /**< Default I2C address (AD0 pulled). */
-#define ICM42670_I2C_ADDRESS_ALT                0x69   /**< Alternate I2C address (autodetect helper uses both). */
-#define ICM42670_REG_WHO_AM_I                   0x75   /**< WHO_AM_I register address. */
-#define ICM42670_WHO_AM_I_RESPONSE              0x67   /**< Expected WHO_AM_I value. */
+#define ICM42670_I2C_ADDRESS 0x69       /**< Default I2C address (AD0 pulled). */
+#define ICM42670_I2C_ADDRESS_ALT 0x69   /**< Alternate I2C address (autodetect helper uses both). */
+#define ICM42670_REG_WHO_AM_I 0x75      /**< WHO_AM_I register address. */
+#define ICM42670_WHO_AM_I_RESPONSE 0x67 /**< Expected WHO_AM_I value. */
 /** @} */
 
 /** @name Interrupts
  *  Interrupt configuration registers and defaults.
  *  @{ */
-#define ICM42670_INT_CONFIG                     0x06   /**< INT1/INT2 routing/config register. */
-#define ICM42670_INT1_CONFIG_VALUE              0x02   /**< Default INT1 config: active-low, pulsed (course default). */
+#define ICM42670_INT_CONFIG 0x06        /**< INT1/INT2 routing/config register. */
+#define ICM42670_INT1_CONFIG_VALUE 0x02 /**< Default INT1 config: active-low, pulsed (course default). */
 /** @} */
 
 /** @name Transfer limits
  *  Helper limits for SDK buffer handling.
  *  @{ */
-#define ICM42670_MAX_READ_LENGTH                256    /**< Max contiguous read length used by the SDK. */
-#define ICM42670_MAX_WRITE_LENGTH               256    /**< Max contiguous write length used by the SDK. */
+#define ICM42670_MAX_READ_LENGTH 256  /**< Max contiguous read length used by the SDK. */
+#define ICM42670_MAX_WRITE_LENGTH 256 /**< Max contiguous write length used by the SDK. */
 /** @} */
 
 /** @name Configuration registers
  *  Top-level configuration register addresses.
  *  @{ */
-#define ICM42670_ACCEL_CONFIG0_REG              0x21   /**< Accelerometer ODR/FSR (see bit fields below). */
-#define ICM42670_GYRO_CONFIG0_REG               0x20   /**< Gyroscope ODR/FSR (see bit fields below). */
-#define ICM42670_PWR_MGMT0_REG                  0x1F   /**< Power state / sensor mode control. */
-#define ICM42670_REG_SIGNAL_PATH_RESET          0x02   /**< Signal path reset register. */
-#define ICM42670_RESET_CONFIG_BITS              0x10   /**< Value used for soft reset sequence. */
+#define ICM42670_ACCEL_CONFIG0_REG 0x21     /**< Accelerometer ODR/FSR (see bit fields below). */
+#define ICM42670_GYRO_CONFIG0_REG 0x20      /**< Gyroscope ODR/FSR (see bit fields below). */
+#define ICM42670_PWR_MGMT0_REG 0x1F         /**< Power state / sensor mode control. */
+#define ICM42670_REG_SIGNAL_PATH_RESET 0x02 /**< Signal path reset register. */
+#define ICM42670_RESET_CONFIG_BITS 0x10     /**< Value used for soft reset sequence. */
 /** @} */
 
 /** @name Accelerometer FSR encodings
  *  ACCEL_CONFIG0[7:5]. Full-scale range selection.
  *  @{ */
-#define ICM42670_ACCEL_FSR_2G                   0x03   /**< ±2 g. */
-#define ICM42670_ACCEL_FSR_4G                   0x02   /**< ±4 g. */
-#define ICM42670_ACCEL_FSR_8G                   0x01   /**< ±8 g. */
-#define ICM42670_ACCEL_FSR_16G                  0x00   /**< ±16 g. */
-#define ICM42670_ACCEL_FSR_DEFAULT              4      /**< SDK default FSR in g (±4 g). */
+#define ICM42670_ACCEL_FSR_2G 0x03   /**< ±2 g. */
+#define ICM42670_ACCEL_FSR_4G 0x02   /**< ±4 g. */
+#define ICM42670_ACCEL_FSR_8G 0x01   /**< ±8 g. */
+#define ICM42670_ACCEL_FSR_16G 0x00  /**< ±16 g. */
+#define ICM42670_ACCEL_FSR_DEFAULT 4 /**< SDK default FSR in g (±4 g). */
 /** @} */
 
 /** @name Gyroscope FSR encodings
  *  GYRO_CONFIG0[7:5]. Full-scale range selection.
  *  @{ */
-#define ICM42670_GYRO_FSR_250DPS                0x03   /**< ±250 dps. */
-#define ICM42670_GYRO_FSR_500DPS                0x02   /**< ±500 dps. */
-#define ICM42670_GYRO_FSR_1000DPS               0x01   /**< ±1000 dps. */
-#define ICM42670_GYRO_FSR_2000DPS               0x00   /**< ±2000 dps. */
-#define ICM42670_GYRO_FSR_DEFAULT               250    /**< SDK default FSR in dps (±250 dps). */
+#define ICM42670_GYRO_FSR_250DPS 0x03  /**< ±250 dps. */
+#define ICM42670_GYRO_FSR_500DPS 0x02  /**< ±500 dps. */
+#define ICM42670_GYRO_FSR_1000DPS 0x01 /**< ±1000 dps. */
+#define ICM42670_GYRO_FSR_2000DPS 0x00 /**< ±2000 dps. */
+#define ICM42670_GYRO_FSR_DEFAULT 250  /**< SDK default FSR in dps (±250 dps). */
 /** @} */
 
 /** @name Accelerometer ODR encodings (LN mode)
  *  ACCEL_CONFIG0[3:0]. Output Data Rate selection in Low-Noise mode.
  *  @{ */
-#define ICM42670_ACCEL_ODR_25HZ                 0x0B   /**< 25 Hz. */
-#define ICM42670_ACCEL_ODR_50HZ                 0x0A   /**< 50 Hz. */
-#define ICM42670_ACCEL_ODR_100HZ                0x09   /**< 100 Hz. */
-#define ICM42670_ACCEL_ODR_200HZ                0x08   /**< 200 Hz. */
-#define ICM42670_ACCEL_ODR_400HZ                0x07   /**< 400 Hz. */
-#define ICM42670_ACCEL_ODR_800HZ                0x06   /**< 800 Hz. */
-#define ICM42670_ACCEL_ODR_1600HZ               0x05   /**< 1600 Hz. */
-#define ICM42670_ACCEL_ODR_DEFAULT              100    /**< SDK default ODR in Hz (100 Hz). */
+#define ICM42670_ACCEL_ODR_25HZ 0x0B   /**< 25 Hz. */
+#define ICM42670_ACCEL_ODR_50HZ 0x0A   /**< 50 Hz. */
+#define ICM42670_ACCEL_ODR_100HZ 0x09  /**< 100 Hz. */
+#define ICM42670_ACCEL_ODR_200HZ 0x08  /**< 200 Hz. */
+#define ICM42670_ACCEL_ODR_400HZ 0x07  /**< 400 Hz. */
+#define ICM42670_ACCEL_ODR_800HZ 0x06  /**< 800 Hz. */
+#define ICM42670_ACCEL_ODR_1600HZ 0x05 /**< 1600 Hz. */
+#define ICM42670_ACCEL_ODR_DEFAULT 100 /**< SDK default ODR in Hz (100 Hz). */
 /** @} */
 
 /** @name Gyroscope ODR encodings
  *  GYRO_CONFIG0[3:0]. Output Data Rate selection.
  *  @{ */
-#define ICM42670_GYRO_ODR_25HZ                  0x0B   /**< 25 Hz. */
-#define ICM42670_GYRO_ODR_50HZ                  0x0A   /**< 50 Hz. */
-#define ICM42670_GYRO_ODR_100HZ                 0x09   /**< 100 Hz. */
-#define ICM42670_GYRO_ODR_200HZ                 0x08   /**< 200 Hz. */
-#define ICM42670_GYRO_ODR_400HZ                 0x07   /**< 400 Hz. */
-#define ICM42670_GYRO_ODR_800HZ                 0x06   /**< 800 Hz. */
-#define ICM42670_GYRO_ODR_1600HZ                0x05   /**< 1600 Hz. */
-#define ICM42670_GYRO_ODR_DEFAULT               100    /**< SDK default ODR in Hz (100 Hz). */
+#define ICM42670_GYRO_ODR_25HZ 0x0B   /**< 25 Hz. */
+#define ICM42670_GYRO_ODR_50HZ 0x0A   /**< 50 Hz. */
+#define ICM42670_GYRO_ODR_100HZ 0x09  /**< 100 Hz. */
+#define ICM42670_GYRO_ODR_200HZ 0x08  /**< 200 Hz. */
+#define ICM42670_GYRO_ODR_400HZ 0x07  /**< 400 Hz. */
+#define ICM42670_GYRO_ODR_800HZ 0x06  /**< 800 Hz. */
+#define ICM42670_GYRO_ODR_1600HZ 0x05 /**< 1600 Hz. */
+#define ICM42670_GYRO_ODR_DEFAULT 100 /**< SDK default ODR in Hz (100 Hz). */
 /** @} */
 
 /** @name Power / mode bits
  *  Encodings for PWR_MGMT0 sensor-mode fields.
  *  @{ */
-#define ICM42670_ACCEL_MODE_LN                  0x03   /**< Accel Low-Noise mode code for PWR_MGMT0 accel field. */
-#define ICM42670_GYRO_MODE_LN                   0x0C   /**< Gyro Low-Noise mode code for PWR_MGMT0 gyro field. */
+#define ICM42670_ACCEL_MODE_LN 0x03 /**< Accel Low-Noise mode code for PWR_MGMT0 accel field. */
+#define ICM42670_GYRO_MODE_LN 0x0C  /**< Gyro Low-Noise mode code for PWR_MGMT0 gyro field. */
 /** @} */
 
 /** @name Sensor data window
  *  Starting register for burst reads of temp/accel/gyro data.
  *  @{ */
-#define ICM42670_SENSOR_DATA_START_REG          0x09   /**< First data register for TEMP/ACCEL/GYRO burst read. */
+#define ICM42670_SENSOR_DATA_START_REG 0x09 /**< First data register for TEMP/ACCEL/GYRO burst read. */
 /** @} */
 
 /** @} */ /* end of group  of registers*/
-
-
-
 
 /* =========================
  *  Public function prototypes
@@ -401,10 +395,9 @@ bool i2c_write(uint8_t addr, const uint8_t *src, size_t len, bool nostop);
 bool i2c_read(uint8_t addr, uint8_t *dst, size_t len, bool nostop);
 /** @} */ // end of General
 
-
 /* =========================
-*  BUTTONS / SWITCHES
-* ========================= */
+ *  BUTTONS / SWITCHES
+ * ========================= */
 
 /**
  * @defgroup buttons Buttons and switches (SW1 / SW2)
@@ -425,15 +418,14 @@ bool i2c_read(uint8_t addr, uint8_t *dst, size_t len, bool nostop);
  * @{
  */
 
-
 /**
  * @brief Initialize switch SW1 (GPIO 2).
  *
  * Configures SW1 as a digital input with no pull resistors enabled. It uses hardware pull-down resistors.
- * 
+ *
  * Use @c gpio_get(SW1_PIN) to read its state directly.
  *
- * @note SW1 is active-high (pressed = 1, released = 0). 
+ * @note SW1 is active-high (pressed = 1, released = 0).
  */
 void init_sw1(void);
 
@@ -441,7 +433,7 @@ void init_sw1(void);
  * @brief Initializes button 1 (same as SW1).
  *
  * This function is a wrapper for @ref init_sw1, performing the same initialization
- * as the SW1 switch setup. It configures GPIO 2 as a digital input using the 
+ * as the SW1 switch setup. It configures GPIO 2 as a digital input using the
  * hardware pull-down resistor.
  *
  * @see init_sw1()
@@ -454,7 +446,7 @@ void init_button1(void);
  * Configures SW2 as a digital input with no pull resistors enabled. It uses hardware pull-down resistors.
  * Use @c gpio_get(SW2_PIN) to read its state directly.
  *
- * @note SW2 is active-hig (pressed = 1, released = 0) 
+ * @note SW2 is active-hig (pressed = 1, released = 0)
  */
 void init_sw2(void);
 
@@ -462,16 +454,14 @@ void init_sw2(void);
  * @brief Initializes button2 (same as SW2).
  *
  * This function is a wrapper for @ref init_sw2, performing the same initialization
- * as the SW2 switch setup. It configures GPIO 22 as a digital input using the 
+ * as the SW2 switch setup. It configures GPIO 22 as a digital input using the
  * hardware pull-down resistor.
  *
  * @see init_sw2()
  */
 void init_button2(void);
 
-
 /** @} */ /* end of group buttons */
-
 
 /* =========================
  *  LEDs (RED + RGB)
@@ -503,7 +493,7 @@ void init_button2(void);
 /**
  * @brief Initialize the onboard LED.
  *
- * Configures the onboard LED pin as an output.  
+ * Configures the onboard LED pin as an output.
  * On the JTKJ HAT the onboard LED is red (GPIO 14).
  */
 void init_led(void);
@@ -511,7 +501,7 @@ void init_led(void);
 /**
  * @brief Initialize the red LED.
  *
- * Configures the red LED pin (GPIO 14) as an output.  
+ * Configures the red LED pin (GPIO 14) as an output.
  * On this board, the red LED is the same as the onboard LED.
  */
 void init_red_led(void);
@@ -528,7 +518,7 @@ void toggle_led(void);
  * @brief Toggle the red LED state.
  *
  * Reads the current state of the red LED and switches it
- * (ON → OFF, OFF → ON).  
+ * (ON → OFF, OFF → ON).
  * On this board, the red LED is the same as the onboard LED.
  */
 void toggle_red_led(void);
@@ -543,7 +533,7 @@ void set_led_status(bool status);
 /**
  * @brief Set the red LED state explicitly.
  *
- * @param status Set to @c true to turn the LED on, @c false to turn it off.  
+ * @param status Set to @c true to turn the LED on, @c false to turn it off.
  * On this board, the red LED is the same as the onboard LED.
  */
 void set_red_led_status(bool status);
@@ -551,7 +541,7 @@ void set_red_led_status(bool status);
 /**
  * @brief Blink the onboard LED a given number of times.
  *
- * Toggles the onboard LED on/off with a fixed delay (~120 ms) 
+ * Toggles the onboard LED on/off with a fixed delay (~120 ms)
  * between transitions. Leaves the LED turned OFF at the end.
  *
  * @param n Number of times to blink.
@@ -561,14 +551,13 @@ void blink_led(int n);
 /**
  * @brief Blink the red LED a given number of times.
  *
- * Toggles the red LED on/off with a fixed delay (~120 ms) 
- * between transitions. Leaves the LED turned OFF at the end.  
+ * Toggles the red LED on/off with a fixed delay (~120 ms)
+ * between transitions. Leaves the LED turned OFF at the end.
  * On this board, the red LED is the same as the onboard LED.
  *
  * @param n Number of times to blink.
  */
 void blink_red_led(int n);
-
 
 /**
  * @brief Initialize the RGB LED (GPIO 18:R, 19:G, 20:B).
@@ -610,7 +599,6 @@ void rgb_led_write(uint8_t r, uint8_t g, uint8_t b);
 void stop_rgb_led(void);
 /** @} */ // end of group ButtonsLeds
 
-
 /* =========================
  *  AUDIO (BUZZER + MICROPHONE)
  * ========================= */
@@ -645,7 +633,6 @@ void stop_rgb_led(void);
  * @{
  */
 
-
 /* =========================
  *  BUZZER
  * ========================= */
@@ -653,7 +640,7 @@ void stop_rgb_led(void);
 /**
  * @brief Initialize the buzzer (GPIO 17).
  *
- * Configures the buzzer pin as a digital output.  
+ * Configures the buzzer pin as a digital output.
  * After this call, the buzzer can be controlled with
  * ::buzzer_play_tone() or ::buzzer_turn_off().
  */
@@ -687,8 +674,6 @@ void buzzer_turn_off(void);
  * other purposes.
  */
 void deinit_buzzer(void);
-
-
 
 /* =========================
  *  PDM MEMS MICROPHONE
@@ -729,7 +714,7 @@ int init_microphone_sampling(void);
 /**
  * @brief Stop microphone sampling.
  *
- * Halts the ongoing microphone capture.  
+ * Halts the ongoing microphone capture.
  * Call again later with ::init_microphone_sampling() to resume.
  */
 void end_microphone_sampling(void);
@@ -753,7 +738,7 @@ void pdm_microphone_set_callback(pdm_samples_ready_handler_t handler);
  * @param samples Number of samples to read.
  * @return The number of samples actually read, or negative on error.
  *
- * @note This function is called inside the sample-ready callback. Otherwise, might not work. 
+ * @note This function is called inside the sample-ready callback. Otherwise, might not work.
  */
 int get_microphone_samples(int16_t *buffer, size_t samples);
 
@@ -833,7 +818,6 @@ int get_microphone_samples(int16_t *buffer, size_t samples);
  * @{
  */
 
-
 /**
  * @brief Initialize the SSD1306 OLED (@ref SSD1306_I2C_ADDRESS — 0x3C).
  *
@@ -886,7 +870,7 @@ void write_text_xy(int16_t x0, int16_t y0, const char *text);
  *
  * @note If you only use @ref write_text_xy, you may not need this.
  */
-void set_text_cursor (int16_t x0, int16_t y0);
+void set_text_cursor(int16_t x0, int16_t y0);
 
 /**
  * @brief Draw a circle centered at (x0, y0).
@@ -973,8 +957,6 @@ void stop_display(void);
 
 /** @} */ // end of group Display
 
-
-
 /* =========================
  *  LIGHT SENSOR VEML6030
  * =========================  */
@@ -1002,8 +984,8 @@ void stop_display(void);
  *
  * @pre The I2C interface must be initialized (use @ref init_i2c_default() or @ref init_hat_sdk()).
  *
- * @see SparkFun Guide: https://learn.sparkfun.com/tutorials/qwiic-ambient-light-sensor-veml6030-hookup-guide/all#arduino-library  
- * @see Application Note: https://www.vishay.com/docs/84367/designingveml6030.pdf  
+ * @see SparkFun Guide: https://learn.sparkfun.com/tutorials/qwiic-ambient-light-sensor-veml6030-hookup-guide/all#arduino-library
+ * @see Application Note: https://www.vishay.com/docs/84367/designingveml6030.pdf
  * @see Datasheet: https://www.vishay.com/docs/84366/veml6030.pdf
  * @{
  */
@@ -1012,9 +994,9 @@ void stop_display(void);
  * @brief Initialize the VEML6030 light sensor (@ref VEML6030_I2C_ADDRESS — 0x10).
  *
  * Configures the sensor with default parameters:
- * - Gain: 1/8  
- * - Integration time: 100 ms  
- * - Power: ON  
+ * - Gain: 1/8
+ * - Integration time: 100 ms
+ * - Power: ON
  * - Interrupts: disabled
  *
  * @pre Call @ref init_i2c_default() or @ref init_hat_sdk() before this function.
@@ -1071,8 +1053,6 @@ void veml6030_stop(void);
 
 /** @} */ // end of group VEML6030
 
-
-
 /* ===============================================
  *  TEMPERATURE AND HUMIDITY SENSOR HDC 2021
  * ===============================================  */
@@ -1098,10 +1078,10 @@ void veml6030_stop(void);
  * | Interrupt | @ref HDC2021_INTERRUPT | 21 | Optional alert pin |
  *
  * Default thresholds configured by @ref init_hdc2021_():
- * - Temperature low:  -30 °C  
- * - Temperature high: +50 °C  
- * - Humidity low:       0 %  
- * - Humidity high:    100 %  
+ * - Temperature low:  -30 °C
+ * - Temperature high: +50 °C
+ * - Humidity low:       0 %
+ * - Humidity high:    100 %
  *
  * These thresholds are part of the sensor’s alert system.
  * Interrupts are **not yet implemented** in this SDK, but threshold
@@ -1117,7 +1097,7 @@ void veml6030_stop(void);
  *
  * @pre The I2C interface must be initialized (use @ref init_i2c_default() or @ref init_hat_sdk()).
  *
- * @see Datasheet: https://www.ti.com/lit/ds/symlink/hdc2021.pdf  
+ * @see Datasheet: https://www.ti.com/lit/ds/symlink/hdc2021.pdf
  * @see Usage Guide: https://www.ti.com/lit/ug/snau250/snau250.pdf
  * @{
  */
@@ -1215,7 +1195,6 @@ float hdc2021_read_humidity(void);
 
 /** @} */ // end of group HDC2021
 
-
 /* =========================
  *  ICM-42670 (IMU)
  * ========================= */
@@ -1229,9 +1208,9 @@ float hdc2021_read_humidity(void);
  * The IMU is connected on I2C at @ref ICM42670_I2C_ADDRESS (0x69).
  *
  * **Recommended defaults**
- * - Accelerometer: ±@ref ICM42670_ACCEL_FSR_DEFAULT g at @ref ICM42670_ACCEL_ODR_DEFAULT Hz  
+ * - Accelerometer: ±@ref ICM42670_ACCEL_FSR_DEFAULT g at @ref ICM42670_ACCEL_ODR_DEFAULT Hz
  *   (typically: ±4 g @ 100 Hz)
- * - Gyroscope:    ±@ref ICM42670_GYRO_FSR_DEFAULT dps at @ref ICM42670_GYRO_ODR_DEFAULT Hz  
+ * - Gyroscope:    ±@ref ICM42670_GYRO_FSR_DEFAULT dps at @ref ICM42670_GYRO_ODR_DEFAULT Hz
  *   (typically: ±250 dps @ 100 Hz)
  *
  * **Modes**
@@ -1325,6 +1304,5 @@ int ICM42670_read_sensor_data(float *ax, float *ay, float *az,
                               float *t);
 
 /** @} */ // end of group ICM42670
-
 
 #endif /* SDK_H */
