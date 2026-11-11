@@ -34,16 +34,6 @@ typedef struct {
   char character;
 } MorseCode;
 
-typedef enum {
-  SIGNAL_NONE,
-  SIGNAL_DOT,
-  SIGNAL_DASH,
-  SIGNAL_SPACE,
-  SIGNAL_END
-} MorseSignal;
-
-QueueHandle_t xMorseQueue;
-
 const char dot = '.';
 const char dash = '-';
 
